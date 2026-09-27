@@ -1,0 +1,22 @@
+# Local development database. Host port 5433 avoids clashing with a
+# locally installed Postgres on 5432.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: hearth
+      POSTGRES_PASSWORD: hearth
+      POSTGRES_DB: hearth
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - hearth-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hearth -d hearth"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  hearth-db:
