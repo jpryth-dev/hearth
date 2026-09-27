@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hearth
+          POSTGRES_PASSWORD: hearth
+          POSTGRES_DB: hearth
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hearth -d hearth"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
+
+    # Throwaway credentials for the CI service container only.
+    env:
+      DATABASE_URL: postgresql://hearth:hearth@localhost:5432/hearth
+      TEST_DATABASE_URL: postgresql://hearth:hearth@localhost:5432/hearth_test
+
+    steps:
+      # Actions pinned to commit SHAs so a moved tag can't change what runs.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # Proves the committed migrations apply cleanly to an empty database.
+      - name: Apply migrations
+        run: npx prisma migrate deploy
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - name: Unit and integration tests
+        run: npm test
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
