@@ -1,0 +1,228 @@
+// Hearth data model. PostgreSQL 16 via Prisma.
+// Eight entities per the Week 3 design: User, Invitation, Session, Album,
+// AlbumAccess, Photo, PhotoMetadata, AuditLog. Five enums.
+// Tables and columns are mapped to snake_case to match the ERD.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------- Enums ----------
+
+enum UserRole {
+  ADMIN
+  MEMBER
+
+  @@map("user_role")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+
+  @@map("user_status")
+}
+
+enum AccessLevel {
+  VIEW
+  CONTRIBUTE
+
+  @@map("access_level")
+}
+
+enum PhotoStatus {
+  PENDING
+  PROCESSING
+  READY
+  REJECTED
+
+  @@map("photo_status")
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  INVITATION_CREATED
+  INVITATION_ACCEPTED
+  INVITATION_REVOKED
+  INVITATION_EXPIRED_USE
+  ACCESS_GRANTED
+  ACCESS_CHANGED
+  ACCESS_REVOKED
+  ACCESS_DENIED
+  ALBUM_CREATED
+  ALBUM_DELETED
+  PHOTO_UPLOADED
+  PHOTO_REJECTED
+  PHOTO_DELETED
+  USER_DISABLED
+  USER_ENABLED
+
+  @@map("audit_action")
+}
+
+// ---------- Identity ----------
+
+model User {
+  id            String     @id @default(uuid()) @db.Uuid
+  email         String     @unique
+  emailVerified DateTime?  @map("email_verified") // required by the Auth.js Prisma adapter
+  displayName   String     @map("display_name")
+  role          UserRole   @default(MEMBER)
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  sessions            Session[]
+  invitationsSent     Invitation[]  @relation("InvitationInviter")
+  invitationAccepted  Invitation?   @relation("InvitationAcceptedBy")
+  albumsOwned         Album[]
+  albumAccess         AlbumAccess[] @relation("AccessHolder")
+  albumAccessGranted  AlbumAccess[] @relation("AccessGrantor")
+  photosUploaded      Photo[]
+  auditEvents         AuditLog[]
+
+  @@map("users")
+}
+
+// Single-use, expiring invitation. Only the hash of the token is stored;
+// the raw token exists only in the emailed link.
+model Invitation {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String
+  tokenHash        String    @unique @map("token_hash")
+  invitedByUserId  String    @map("invited_by_user_id") @db.Uuid
+  acceptedByUserId String?   @unique @map("accepted_by_user_id") @db.Uuid
+  expiresAt        DateTime  @map("expires_at")
+  acceptedAt       DateTime? @map("accepted_at")
+  revokedAt        DateTime? @map("revoked_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  invitedBy  User  @relation("InvitationInviter", fields: [invitedByUserId], references: [id])
+  acceptedBy User? @relation("InvitationAcceptedBy", fields: [acceptedByUserId], references: [id])
+
+  @@index([email])
+  @@map("invitations")
+}
+
+// Database session, shape required by the Auth.js Prisma adapter.
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id") @db.Uuid
+  expires      DateTime
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+// ---------- Albums and permissions ----------
+
+model Album {
+  id          String    @id @default(uuid()) @db.Uuid
+  ownerId     String    @map("owner_id") @db.Uuid
+  title       String
+  description String?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+
+  owner  User          @relation(fields: [ownerId], references: [id])
+  access AlbumAccess[]
+  photos Photo[]
+
+  @@index([ownerId])
+  @@map("albums")
+}
+
+// The permission table. A user sees an album only if they own it or hold a
+// row here. There is no inherited or default visibility.
+model AlbumAccess {
+  id              String      @id @default(uuid()) @db.Uuid
+  albumId         String      @map("album_id") @db.Uuid
+  userId          String      @map("user_id") @db.Uuid
+  accessLevel     AccessLevel @map("access_level")
+  grantedByUserId String      @map("granted_by_user_id") @db.Uuid
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  album     Album @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  user      User  @relation("AccessHolder", fields: [userId], references: [id], onDelete: Cascade)
+  grantedBy User  @relation("AccessGrantor", fields: [grantedByUserId], references: [id])
+
+  @@unique([albumId, userId])
+  @@index([userId])
+  @@map("album_access")
+}
+
+// ---------- Photos ----------
+
+model Photo {
+  id               String      @id @default(uuid()) @db.Uuid
+  albumId          String      @map("album_id") @db.Uuid
+  uploadedByUserId String      @map("uploaded_by_user_id") @db.Uuid
+  storageKey       String      @unique @map("storage_key") @db.Uuid // random, unrelated to filename or album
+  originalFilename String?     @map("original_filename") // display only, never used to build keys
+  mimeType         String?     @map("mime_type") // set from content verification, not the upload header
+  byteSize         Int?        @map("byte_size")
+  width            Int?
+  height           Int?
+  status           PhotoStatus @default(PENDING)
+  rejectionReason  String?     @map("rejection_reason")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  deletedAt        DateTime?   @map("deleted_at")
+
+  album      Album          @relation(fields: [albumId], references: [id])
+  uploadedBy User           @relation(fields: [uploadedByUserId], references: [id])
+  metadata   PhotoMetadata?
+
+  @@index([albumId, status])
+  @@map("photos")
+}
+
+// 1:1 with Photo. Holds the EXIF and GPS data stripped from the stored file,
+// so it stays behind the same access checks as the album.
+model PhotoMetadata {
+  photoId      String    @id @map("photo_id") @db.Uuid
+  takenAt      DateTime? @map("taken_at")
+  cameraMake   String?   @map("camera_make")
+  cameraModel  String?   @map("camera_model")
+  gpsLatitude  Decimal?  @map("gps_latitude") @db.Decimal(9, 6)
+  gpsLongitude Decimal?  @map("gps_longitude") @db.Decimal(9, 6)
+  rawExif      Json?     @map("raw_exif")
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  photo Photo @relation(fields: [photoId], references: [id], onDelete: Cascade)
+
+  @@map("photo_metadata")
+}
+
+// ---------- Audit ----------
+
+// Source for the Security Activity Report. Append-only by convention.
+model AuditLog {
+  id          String      @id @default(uuid()) @db.Uuid
+  actorUserId String?     @map("actor_user_id") @db.Uuid // null for anonymous events (failed login, bad invite token)
+  action      AuditAction
+  targetType  String?     @map("target_type") // "album" | "photo" | "user" | "invitation"
+  targetId    String?     @map("target_id") @db.Uuid
+  ipAddress   String?     @map("ip_address")
+  details     Json?
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  actor User? @relation(fields: [actorUserId], references: [id])
+
+  @@index([createdAt])
+  @@index([actorUserId, createdAt])
+  @@map("audit_logs")
+}
