@@ -25,4 +25,19 @@ import "server-only";
 
 export { albumRole, requireAlbumRole, type AlbumRole } from "./access";
 export { currentActor, type Actor } from "./actor";
-export { getAlbum, listVisibleAlbums, type AlbumSummary } from "./albums";
+export {
+  createAlbum,
+  deleteAlbum,
+  getAlbum,
+  listVisibleAlbums,
+  updateAlbum,
+  type AlbumSummary,
+  type AlbumWriteResult,
+} from "./albums";
+export {
+  grantAlbumAccess,
+  listAlbumAccess,
+  revokeAlbumAccess,
+  type AlbumMember,
+  type GrantResult,
+} from "./sharing";
