@@ -8,6 +8,7 @@ import { db } from "@/server/db";
 import { requireAlbumRole } from "./access";
 import type { Actor } from "./actor";
 
+/** Someone an album is shared with, as its owner sees them. */
 export interface AlbumMember {
   userId: string;
   displayName: string;
@@ -15,6 +16,7 @@ export interface AlbumMember {
   accessLevel: AccessLevel;
 }
 
+/** What a grant did, or why it was refused. Denials by non-owners throw instead. */
 export type GrantResult =
   | { ok: true; change: "granted" | "changed" | "unchanged" }
   | { ok: false; reason: "invalid_email" | "invalid_level" | "no_such_member" | "self" };

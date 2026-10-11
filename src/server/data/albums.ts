@@ -7,6 +7,7 @@ import { db } from "@/server/db";
 import { requireAlbumRole, type AlbumRole } from "./access";
 import type { Actor } from "./actor";
 
+/** An album as the UI sees it, with the viewer's own role on it. */
 export interface AlbumSummary {
   id: string;
   title: string;
@@ -65,6 +66,7 @@ export async function getAlbum(actor: Actor, rawAlbumId: string): Promise<AlbumS
   };
 }
 
+/** Created/updated id, or the first error per field for the form. */
 export type AlbumWriteResult = { ok: true; id: string } | { ok: false; errors: Record<string, string> };
 
 function fieldErrors(issues: { path: PropertyKey[]; message: string }[]): Record<string, string> {

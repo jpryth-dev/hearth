@@ -12,8 +12,10 @@ import { deleteObjects, putObject, signedGetUrl } from "@/server/storage";
 import { requireAlbumRole, type AlbumRole } from "./access";
 import type { Actor } from "./actor";
 
+/** The new photo's id, or why the file was refused. */
 export type UploadResult = { ok: true; photoId: string } | { ok: false; reason: RejectionReason };
 
+/** A photo in an album grid. */
 export interface PhotoSummary {
   id: string;
   width: number | null;
@@ -23,6 +25,7 @@ export interface PhotoSummary {
   uploadedBy: string;
 }
 
+/** One photo for its own page. GPS is deliberately absent. */
 export interface PhotoDetail {
   id: string;
   albumId: string;

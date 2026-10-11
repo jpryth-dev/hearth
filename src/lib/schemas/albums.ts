@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+/** An album title: trimmed, 1–100 characters. */
 export const albumTitleSchema = z
   .string()
   .trim()
@@ -13,11 +14,13 @@ export const albumDescriptionSchema = z
   .max(1000, "Use 1000 characters or fewer")
   .transform((s) => (s === "" ? null : s));
 
+/** Title and description, for creating and editing an album. */
 export const albumInputSchema = z.object({
   title: albumTitleSchema,
   description: albumDescriptionSchema,
 });
 
+/** Raw form values before parsing. */
 export type AlbumInput = z.input<typeof albumInputSchema>;
 
 /** Levels an owner can grant. Ownership itself is never granted. */

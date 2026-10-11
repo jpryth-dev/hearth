@@ -15,8 +15,10 @@ function isAccepted(info: Metadata): boolean {
   return info.format === "heif" && info.compression === "av1";
 }
 
+/** Why an upload was refused. */
 export type RejectionReason = "unsupported_type" | "too_many_pixels" | "corrupt";
 
+/** The files to store (both metadata-free) and the metadata extracted. */
 export interface ProcessedImage {
   mimeType: "image/webp";
   full: { data: Buffer; width: number; height: number };
@@ -24,6 +26,7 @@ export interface ProcessedImage {
   metadata: ExtractedMetadata;
 }
 
+/** Processed image, or the rejection reason. */
 export type ProcessResult = { ok: true; image: ProcessedImage } | { ok: false; reason: RejectionReason };
 
 /**

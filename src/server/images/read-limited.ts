@@ -1,5 +1,6 @@
 import "server-only";
 
+/** The body bytes, or why reading stopped. */
 export type ReadResult = { ok: true; bytes: Buffer } | { ok: false; reason: "empty" | "too_large" };
 
 /**

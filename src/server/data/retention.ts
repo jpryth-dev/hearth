@@ -18,6 +18,7 @@ export const RETENTION_DAYS = 30;
 
 const BATCH = 100;
 
+/** Counts of what one purge run removed. */
 export interface PurgeReport {
   photosPurged: number;
   albumsPurged: number;
