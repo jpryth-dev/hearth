@@ -62,6 +62,7 @@ enum AuditAction {
   PHOTO_UPLOADED
   PHOTO_REJECTED
   PHOTO_DELETED
+  USER_CREATED // outside the invitation flow, e.g. the bootstrap admin script
   USER_DISABLED
   USER_ENABLED
 
