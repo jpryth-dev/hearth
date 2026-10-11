@@ -37,3 +37,14 @@ export function firstLink(text: string): string {
   if (!match) throw new Error("No link in message");
   return match[0];
 }
+
+/** Waits until an address has received `count` messages, then returns them. */
+export async function waitForMail(email: string, count = 1, timeoutMs = 10_000): Promise<CaughtMail[]> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const mail = await mailTo(email);
+    if (mail.length >= count) return mail;
+    if (Date.now() > deadline) throw new Error(`Expected ${count} message(s) to ${email}, got ${mail.length}`);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+}
