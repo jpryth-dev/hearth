@@ -35,6 +35,15 @@ export {
   type AlbumWriteResult,
 } from "./albums";
 export {
+  deletePhoto,
+  getPhoto,
+  listPhotos,
+  uploadPhoto,
+  type PhotoDetail,
+  type PhotoSummary,
+  type UploadResult,
+} from "./photos";
+export {
   grantAlbumAccess,
   listAlbumAccess,
   revokeAlbumAccess,

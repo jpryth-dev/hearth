@@ -2,11 +2,12 @@ import Link from "next/link";
 
 import { Button, Page } from "@/components/ui";
 import { orNotFound } from "@/lib/or-not-found";
-import { currentActor, getAlbum, listAlbumAccess } from "@/server/data";
+import { currentActor, getAlbum, listAlbumAccess, listPhotos } from "@/server/data";
 
 import { AlbumForm } from "../album-form";
 import { deleteAlbumAction, revokeAccessAction, updateAlbumAction } from "./actions";
 import { ShareForm } from "./share-form";
+import { UploadPhotos } from "./upload-photos";
 
 export const metadata = { title: "Album · Hearth" };
 
@@ -18,6 +19,8 @@ export default async function AlbumPage({ params }: PageProps<"/albums/[id]">) {
   const album = await orNotFound(getAlbum(actor, id));
   const isOwner = album.role === "OWNER";
   const members = isOwner ? await listAlbumAccess(actor, album.id) : [];
+  const photos = await listPhotos(actor, album.id);
+  const canUpload = album.role === "OWNER" || album.role === "CONTRIBUTE";
 
   return (
     <Page title={album.title}>
@@ -25,7 +28,24 @@ export default async function AlbumPage({ params }: PageProps<"/albums/[id]">) {
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         {isOwner ? "Your album" : `Shared by ${album.ownerName} · ${ROLE_LABEL[album.role]}`}
       </p>
-      <p className="mt-8 text-sm text-zinc-600 dark:text-zinc-400">Photos arrive in the next phase.</p>
+      <section className="mt-8">
+        {canUpload && <UploadPhotos albumId={album.id} />}
+        {photos.length === 0 ? (
+          <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-400">No photos yet.</p>
+        ) : (
+          <ul className="mt-4 grid grid-cols-3 gap-2" aria-label="Photos">
+            {photos.map((p) => (
+              <li key={p.id}>
+                <Link href={`/photos/${p.id}`} className="block aspect-square overflow-hidden rounded-md bg-zinc-100 dark:bg-zinc-800">
+                  {/* Plain <img> on purpose: see the photo page. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.thumbUrl} alt={`Photo added by ${p.uploadedBy}`} className="h-full w-full object-cover" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {isOwner && (
         <>

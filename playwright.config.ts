@@ -8,6 +8,11 @@ import { testDatabaseUrl } from "./tests/test-database-url";
 // production build so they exercise what ships, on the *_test database so
 // they never touch dev data.
 const PORT = 3100;
+
+function testBucket(): string {
+  if (!process.env.TEST_S3_BUCKET) throw new Error("TEST_S3_BUCKET is not set (see .env.example)");
+  return process.env.TEST_S3_BUCKET;
+}
 const APP_URL = `http://localhost:${PORT}`;
 
 export default defineConfig({
@@ -29,6 +34,6 @@ export default defineConfig({
     // Always start fresh so the server is guaranteed to use the test database.
     reuseExistingServer: false,
     timeout: 180_000,
-    env: { APP_URL, DATABASE_URL: testDatabaseUrl() },
+    env: { APP_URL, DATABASE_URL: testDatabaseUrl(), S3_BUCKET: testBucket() },
   },
 });

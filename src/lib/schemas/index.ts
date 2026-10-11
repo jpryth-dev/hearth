@@ -20,5 +20,6 @@ export {
   type AlbumInput,
 } from "./albums";
 export { displayNameSchema, emailSchema, tokenSchema } from "./auth";
-export { serverEnvSchema, type ServerEnv } from "./env";
+export { serverEnvSchema, storageEnvSchema, type ServerEnv, type StorageEnv } from "./env";
 export { uuidSchema, type Uuid } from "./ids";
+export { MAX_UPLOAD_BYTES, UPLOAD_ACCEPT, photoFilenameSchema } from "./photos";

@@ -11,17 +11,22 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "admin:create": "tsx scripts/create-admin.ts"
+    "admin:create": "tsx scripts/create-admin.ts",
+    "storage:init": "tsx scripts/storage-init.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1149.0",
+    "@aws-sdk/s3-request-presigner": "3.1149.0",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "7.10.0",
     "dotenv": "18.0.4",
+    "exif-reader": "2.0.3",
     "next": "16.3.6",
     "nodemailer": "10.1.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "server-only": "0.0.1",
+    "sharp": "0.35.5",
     "zod": "4.6.5"
   },
   "devDependencies": {

@@ -26,5 +26,19 @@ services:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
 
+  # S3-compatible object storage for photos. Private by default: objects are
+  # reachable only through signed URLs.
+  storage:
+    image: rustfs/rustfs:1.0.1
+    restart: unless-stopped
+    environment:
+      RUSTFS_ACCESS_KEY: hearth
+      RUSTFS_SECRET_KEY: hearth-dev-secret
+    ports:
+      - "127.0.0.1:9000:9000"
+    volumes:
+      - hearth-storage:/data
+
 volumes:
   hearth-db:
+  hearth-storage:

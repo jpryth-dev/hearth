@@ -29,6 +29,7 @@ export default async function setup(): Promise<void> {
     await client.end();
   }
 
+  execFileSync("npx", ["tsx", "scripts/storage-init.ts"], { stdio: "inherit" });
   execFileSync("npx", ["tsx", "scripts/create-admin.ts", "--email", E2E_ADMIN.email, "--name", E2E_ADMIN.name], {
     env: { ...process.env, DATABASE_URL: url },
     stdio: "inherit",
