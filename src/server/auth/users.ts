@@ -4,8 +4,8 @@ import type { UserRole, UserStatus } from "@/generated/prisma/client";
 import { uuidSchema } from "@/lib/schemas";
 import { recordAudit } from "@/server/audit";
 import { db } from "@/server/db";
-import { ForbiddenError } from "@/server/errors";
 
+import { assertAdmin } from "./admin-guard";
 import type { SessionUser } from "./session";
 
 export interface ManagedUser {
@@ -21,15 +21,9 @@ export type StatusChangeResult =
   | { ok: true }
   | { ok: false; reason: "not_found" | "self" | "last_admin" | "unchanged" };
 
-interface AdminContext {
+export interface AdminContext {
   actor: SessionUser;
   ipAddress: string | null;
-}
-
-async function assertAdmin({ actor, ipAddress }: AdminContext, operation: string): Promise<void> {
-  if (actor.role === "ADMIN") return;
-  await recordAudit({ action: "ACCESS_DENIED", actorUserId: actor.id, ipAddress, details: { operation } });
-  throw new ForbiddenError(operation);
 }
 
 /**
@@ -38,7 +32,7 @@ async function assertAdmin({ actor, ipAddress }: AdminContext, operation: string
  * @throws ForbiddenError if the actor isn't an admin (audited).
  */
 export async function listUsers(ctx: AdminContext): Promise<ManagedUser[]> {
-  await assertAdmin(ctx, "listUsers");
+  await assertAdmin(ctx.actor, ctx.ipAddress, "listUsers");
   const rows = await db.user.findMany({ orderBy: [{ status: "asc" }, { displayName: "asc" }] });
   return rows.map((u) => ({
     id: u.id,
@@ -59,7 +53,7 @@ export async function listUsers(ctx: AdminContext): Promise<ManagedUser[]> {
  * @throws ForbiddenError if the actor isn't an admin (audited).
  */
 export async function disableUser(ctx: AdminContext, rawUserId: string): Promise<StatusChangeResult> {
-  await assertAdmin(ctx, "disableUser");
+  await assertAdmin(ctx.actor, ctx.ipAddress, "disableUser");
   const id = uuidSchema.safeParse(rawUserId);
   if (!id.success) return { ok: false, reason: "not_found" };
   if (id.data === ctx.actor.id) return { ok: false, reason: "self" };
@@ -94,7 +88,7 @@ export async function disableUser(ctx: AdminContext, rawUserId: string): Promise
  * @throws ForbiddenError if the actor isn't an admin (audited).
  */
 export async function enableUser(ctx: AdminContext, rawUserId: string): Promise<StatusChangeResult> {
-  await assertAdmin(ctx, "enableUser");
+  await assertAdmin(ctx.actor, ctx.ipAddress, "enableUser");
   const id = uuidSchema.safeParse(rawUserId);
   if (!id.success) return { ok: false, reason: "not_found" };
 

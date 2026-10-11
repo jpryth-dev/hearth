@@ -4,10 +4,10 @@ import { displayNameSchema, emailSchema, tokenSchema, uuidSchema } from "@/lib/s
 import { recordAudit } from "@/server/audit";
 import { db } from "@/server/db";
 import { serverEnv } from "@/server/env";
-import { ForbiddenError } from "@/server/errors";
 import { sendMail } from "@/server/mail";
 import { invitationMessage } from "@/server/mail/templates";
 
+import { assertAdmin } from "./admin-guard";
 import type { SessionUser } from "./session";
 import { generateToken, hashToken } from "./tokens";
 
@@ -29,13 +29,6 @@ export interface PendingInvitation {
   expiresAt: Date;
 }
 
-/** Only admins manage invitations. Denials are audited, then thrown. */
-async function assertAdmin(actor: SessionUser, operation: string, ipAddress: string | null) {
-  if (actor.role === "ADMIN") return;
-  await recordAudit({ action: "ACCESS_DENIED", actorUserId: actor.id, ipAddress, details: { operation } });
-  throw new ForbiddenError(operation);
-}
-
 /**
  * Invites an email address and sends the invitation link.
  *
@@ -52,7 +45,7 @@ export async function createInvitation(
   ipAddress: string | null,
   now: Date = new Date(),
 ): Promise<InviteResult> {
-  await assertAdmin(actor, "createInvitation", ipAddress);
+  await assertAdmin(actor, ipAddress, "createInvitation");
 
   const parsed = emailSchema.safeParse(rawEmail);
   if (!parsed.success) return { ok: false, reason: "invalid_email" };
@@ -100,7 +93,7 @@ export async function listPendingInvitations(
   ipAddress: string | null,
   now: Date = new Date(),
 ): Promise<PendingInvitation[]> {
-  await assertAdmin(actor, "listPendingInvitations", ipAddress);
+  await assertAdmin(actor, ipAddress, "listPendingInvitations");
 
   const rows = await db.invitation.findMany({
     where: { acceptedAt: null, revokedAt: null, expiresAt: { gt: now } },
@@ -128,7 +121,7 @@ export async function revokeInvitation(
   rawId: string,
   ipAddress: string | null,
 ): Promise<boolean> {
-  await assertAdmin(actor, "revokeInvitation", ipAddress);
+  await assertAdmin(actor, ipAddress, "revokeInvitation");
 
   const id = uuidSchema.safeParse(rawId);
   if (!id.success) return false;

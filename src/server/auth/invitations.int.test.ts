@@ -54,6 +54,9 @@ describe("invitations", () => {
       expect(await db.invitation.count()).toBe(0);
       expect(await mailTo("x@example.com")).toEqual([]);
       expect(await auditActions()).toEqual(["ACCESS_DENIED"]);
+      const denial = await db.auditLog.findFirstOrThrow({ where: { action: "ACCESS_DENIED" } });
+      expect(denial).toMatchObject({ actorUserId: member.id, ipAddress: IP });
+      expect(denial.details).toEqual({ operation: "createInvitation" });
     });
 
     it("refuses an address that already belongs to a user", async () => {
