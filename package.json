@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "admin:create": "tsx scripts/create-admin.ts",
-    "storage:init": "tsx scripts/storage-init.ts"
+    "storage:init": "tsx scripts/storage-init.ts",
+    "purge": "tsx --conditions=react-server --tsconfig tsconfig.json scripts/purge.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1149.0",

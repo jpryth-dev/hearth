@@ -37,7 +37,8 @@ export async function seed(db: PrismaClient): Promise<void> {
     // Admin owns this one but, like everyone, sees only albums they own or were granted.
     { id: SEED_ALBUMS.adminPrivate, ownerId: ids.admin, title: "Admin's album", deletedAt: null },
     // Soft-deleted but still shared with Bob, so queries must filter on deletedAt.
-    { id: SEED_ALBUMS.deleted, ownerId: ids.alice, title: "Deleted album", deletedAt: new Date("2026-01-01T00:00:00Z") },
+    // Dated now so it stays within retention and `npm run purge` keeps it.
+    { id: SEED_ALBUMS.deleted, ownerId: ids.alice, title: "Deleted album", deletedAt: new Date() },
   ];
   for (const album of albums) {
     await db.album.upsert({ where: { id: album.id }, update: album, create: album });

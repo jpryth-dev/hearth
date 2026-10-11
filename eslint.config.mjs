@@ -31,6 +31,10 @@ const eslintConfig = defineConfig([
               group: ["@/server/db", "**/server/db", "@/generated/prisma/client", "**/generated/prisma/client"],
               message: "Use the data-access layer in src/server/data/ instead of the database client.",
             },
+            {
+              group: ["@/server/data/retention", "**/server/data/retention"],
+              message: "Maintenance jobs run from scripts only, never from a request.",
+            },
           ],
         },
       ],
