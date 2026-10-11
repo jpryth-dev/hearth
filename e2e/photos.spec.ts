@@ -2,7 +2,7 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 
 import { E2E_ADMIN, E2E_MEMBERS } from "../tests/e2e-users";
 import { FAMILY_PHOTO_EXIF, jpegWithExif } from "../tests/images";
-import { signIn } from "./helpers";
+import { createAlbum, shareAlbum, signIn } from "./helpers";
 
 async function as(browser: Browser, email: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
@@ -23,14 +23,8 @@ async function expectImageLoaded(page: Page, selector: string) {
 
 test("photos are seen by the album's people only, and deletion hides them", async ({ browser }) => {
   const alice = await as(browser, E2E_MEMBERS.alice.email);
-  await alice.getByLabel("Title").fill("Garden");
-  await alice.getByRole("button", { name: "Create album" }).click();
-  await expect(alice.getByRole("heading", { name: "Garden" })).toBeVisible();
-  const albumPath = new URL(alice.url()).pathname;
-
-  await alice.getByLabel("Member's email").fill(E2E_MEMBERS.bob.email);
-  await alice.getByRole("button", { name: "Share" }).click();
-  await expect(alice.getByRole("status")).toHaveText("Shared.");
+  const albumPath = await createAlbum(alice, "Garden");
+  await shareAlbum(alice, albumPath, E2E_MEMBERS.bob.email);
 
   // Alice uploads a generated photo carrying camera and GPS EXIF, plus a fake.
   await alice.getByLabel("Add photos", { exact: true }).setInputFiles([
@@ -43,6 +37,7 @@ test("photos are seen by the album's people only, and deletion hides them", asyn
 
   await alice.locator("ul[aria-label=Photos] a").first().click();
   await expect(alice.getByRole("heading", { name: "roses.jpg" })).toBeVisible();
+  await expect(alice.getByText("1 of 1")).toBeVisible();
   await expect(alice.getByText("TestCam T-1000")).toBeVisible();
   await expectImageLoaded(alice, "main img");
   const photoPath = new URL(alice.url()).pathname;
@@ -62,16 +57,13 @@ test("photos are seen by the album's people only, and deletion hides them", asyn
   // Alice deletes it; it's gone for Bob too.
   await alice.getByRole("button", { name: "Delete photo" }).click();
   await expect(alice).toHaveURL(new RegExp(`${albumPath}$`));
-  await expect(alice.getByText("No photos yet.")).toBeVisible();
+  await expect(alice.getByText("No photos yet")).toBeVisible();
   await expectNotFound(bob, photoPath);
 });
 
 test("the upload endpoint refuses strangers, other origins and signed-out callers", async ({ browser, playwright }) => {
   const alice = await as(browser, E2E_MEMBERS.alice.email);
-  await alice.getByLabel("Title").fill("Locked");
-  await alice.getByRole("button", { name: "Create album" }).click();
-  await expect(alice.getByRole("heading", { name: "Locked" })).toBeVisible();
-  const endpoint = `/api/albums${new URL(alice.url()).pathname.replace("/albums", "")}/photos`;
+  const endpoint = `/api${await createAlbum(alice, "Locked")}/photos`;
   const photo = await jpegWithExif();
   const origin = "http://localhost:3100";
 

@@ -7,12 +7,12 @@ export async function SiteHeader() {
   const user = await getCurrentUser();
   return (
     <header className="border-b border-zinc-200 dark:border-zinc-800">
-      <div className="mx-auto flex w-full max-w-xl items-center justify-between gap-4 px-6 py-3 text-sm">
-        <Link href="/" className="font-semibold">
+      <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 text-sm sm:px-6">
+        <Link href="/" className="text-base font-semibold">
           Hearth
         </Link>
         {user && (
-          <nav className="flex items-center gap-4">
+          <nav className="flex flex-wrap items-center gap-x-4 gap-y-1">
             {user.role === "ADMIN" && (
               <>
                 <Link href="/admin/invitations">Invitations</Link>

@@ -16,11 +16,13 @@ describe("buildCsp", () => {
     expect(csp).toContain("upgrade-insecure-requests");
     expect(csp).not.toContain("unsafe-eval");
     expect(csp).not.toContain("unsafe-inline");
+    expect(csp).toContain("style-src 'self' 'nonce-abc123'");
   });
 
   it("allows eval only in development, and skips the https upgrade over http", () => {
     const csp = buildCsp({ ...base, isDev: true, https: false });
     expect(csp).toContain("'unsafe-eval'");
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'");
     expect(csp).not.toContain("upgrade-insecure-requests");
   });
 });

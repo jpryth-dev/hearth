@@ -34,7 +34,7 @@ test("disabling someone signs them out at once; enabling lets them back", async 
   await admin.getByRole("button", { name: `Enable ${E2E_MEMBERS.carol.name}` }).click();
   await expect(admin.getByRole("button", { name: `Disable ${E2E_MEMBERS.carol.name}` })).toBeVisible();
   await signIn(carol, E2E_MEMBERS.carol.email);
-  await expect(carol.getByRole("heading", { name: `Welcome, ${E2E_MEMBERS.carol.name}` })).toBeVisible();
+  await expect(carol.getByText(`Welcome, ${E2E_MEMBERS.carol.name}`, { exact: true })).toBeVisible();
 
   // The report shows both changes, concerning Carol, and filters by action.
   await admin.getByRole("link", { name: "Activity" }).click();

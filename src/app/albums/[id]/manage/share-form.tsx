@@ -4,7 +4,7 @@ import { useActionState } from "react";
 
 import { Button, Field, Notice } from "@/components/ui";
 
-import { grantAccessAction, type ShareFormState } from "./actions";
+import { grantAccessAction, type ShareFormState } from "../actions";
 
 export function ShareForm({ albumId }: { albumId: string }) {
   const [state, action, pending] = useActionState<ShareFormState, FormData>(grantAccessAction, { status: "idle" });
