@@ -1,10 +1,11 @@
-export default function Home() {
+import { Page } from "@/components/ui";
+import { requireUser } from "@/server/auth";
+
+export default async function Home() {
+  const user = await requireUser();
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-24">
-      <h1 className="text-3xl font-semibold tracking-tight">Hearth</h1>
-      <p className="text-zinc-600 dark:text-zinc-400">
-        Private family photo sharing. Invitation only.
-      </p>
-    </main>
+    <Page title={`Welcome, ${user.displayName}`}>
+      <p className="text-zinc-600 dark:text-zinc-400">Albums arrive in the next phase.</p>
+    </Page>
   );
 }

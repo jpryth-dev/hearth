@@ -18,5 +18,13 @@ services:
       timeout: 5s
       retries: 15
 
+  # Catches all outgoing mail in development. Inbox UI: http://localhost:8025
+  mail:
+    image: axllent/mailpit:v1.31.5
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1025:1025"
+      - "127.0.0.1:8025:8025"
+
 volumes:
   hearth-db:

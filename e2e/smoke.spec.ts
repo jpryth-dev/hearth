@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-test("home page loads", async ({ page }) => {
+test("signed-out visitors land on the sign-in page", async ({ page }) => {
   await page.goto("/");
-  await expect(page).toHaveTitle("Hearth");
-  await expect(page.getByRole("heading", { name: "Hearth" })).toBeVisible();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "Sign in to Hearth" })).toBeVisible();
 });
