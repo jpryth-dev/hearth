@@ -31,11 +31,20 @@ jobs:
           --health-interval 2s
           --health-timeout 5s
           --health-retries 15
+      mail:
+        image: axllent/mailpit:v1.31.5
+        ports:
+          - 1025:1025
+          - 8025:8025
 
     # Throwaway credentials for the CI service container only.
     env:
       DATABASE_URL: postgresql://hearth:hearth@localhost:5432/hearth
       TEST_DATABASE_URL: postgresql://hearth:hearth@localhost:5432/hearth_test
+      APP_URL: http://localhost:3100
+      SMTP_URL: smtp://localhost:1025
+      MAIL_FROM: Hearth <no-reply@hearth.local>
+      MAILPIT_URL: http://localhost:8025
 
     steps:
       # Actions pinned to commit SHAs so a moved tag can't change what runs.

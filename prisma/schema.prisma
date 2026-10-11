@@ -1,6 +1,7 @@
 // Hearth data model. PostgreSQL 16 via Prisma.
 // Eight entities per the Week 3 design: User, Invitation, Session, Album,
-// AlbumAccess, Photo, PhotoMetadata, AuditLog. Five enums.
+// AlbumAccess, Photo, PhotoMetadata, AuditLog. Five enums. Phase 2 adds
+// LoginToken (design deviation).
 // Tables and columns are mapped to snake_case to match the ERD.
 
 generator client {
@@ -72,7 +73,7 @@ enum AuditAction {
 model User {
   id            String     @id @default(uuid()) @db.Uuid
   email         String     @unique
-  emailVerified DateTime?  @map("email_verified") // required by the Auth.js Prisma adapter
+  emailVerified DateTime?  @map("email_verified") // set when the user accepts an invitation
   displayName   String     @map("display_name")
   role          UserRole   @default(MEMBER)
   status        UserStatus @default(ACTIVE)
@@ -80,6 +81,7 @@ model User {
   updatedAt     DateTime   @updatedAt @map("updated_at")
 
   sessions            Session[]
+  loginTokens         LoginToken[]
   invitationsSent     Invitation[]  @relation("InvitationInviter")
   invitationAccepted  Invitation?   @relation("InvitationAcceptedBy")
   albumsOwned         Album[]
@@ -111,18 +113,35 @@ model Invitation {
   @@map("invitations")
 }
 
-// Database session, shape required by the Auth.js Prisma adapter.
+// Database session. The cookie holds the raw token; only its SHA-256 hash is
+// stored, so a database leak does not expose live sessions.
 model Session {
-  id           String   @id @default(uuid()) @db.Uuid
-  sessionToken String   @unique @map("session_token")
-  userId       String   @map("user_id") @db.Uuid
-  expires      DateTime
-  createdAt    DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid()) @db.Uuid
+  tokenHash String   @unique @map("token_hash")
+  userId    String   @map("user_id") @db.Uuid
+  expires   DateTime
+  createdAt DateTime @default(now()) @map("created_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("sessions")
+}
+
+// Single-use sign-in link for returning users (design deviation).
+// Only the hash of the token is stored.
+model LoginToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("login_tokens")
 }
 
 // ---------- Albums and permissions ----------
