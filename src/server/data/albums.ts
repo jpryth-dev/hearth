@@ -3,9 +3,11 @@ import "server-only";
 import { albumInputSchema, type AlbumInput } from "@/lib/schemas";
 import { recordAudit } from "@/server/audit";
 import { db } from "@/server/db";
+import { signedGetUrl } from "@/server/storage";
 
 import { requireAlbumRole, type AlbumRole } from "./access";
 import type { Actor } from "./actor";
+import { thumbKey, VISIBLE_PHOTO } from "./photo-keys";
 
 /** An album as the UI sees it, with the viewer's own role on it. */
 export interface AlbumSummary {
@@ -17,11 +19,21 @@ export interface AlbumSummary {
   createdAt: Date;
 }
 
+/** An album on the home page: its summary plus a cover and a photo count. */
+export interface AlbumCard extends AlbumSummary {
+  photoCount: number;
+  /** Signed thumbnail of the newest photo, or null for an empty album. Don't cache or log. */
+  coverUrl: string | null;
+}
+
 /**
- * Every album the actor owns or has been granted, newest first. Soft-deleted
- * albums are excluded.
+ * Every album the actor owns or has been granted, newest first, with a cover
+ * photo and photo count. Soft-deleted albums and photos are excluded.
+ *
+ * Covers are signed only for albums matched by the owner-or-grantee filter,
+ * which is the same rule albumRole applies.
  */
-export async function listVisibleAlbums(actor: Actor): Promise<AlbumSummary[]> {
+export async function listVisibleAlbums(actor: Actor): Promise<AlbumCard[]> {
   const rows = await db.album.findMany({
     where: {
       deletedAt: null,
@@ -30,18 +42,29 @@ export async function listVisibleAlbums(actor: Actor): Promise<AlbumSummary[]> {
     include: {
       owner: { select: { displayName: true } },
       access: { where: { userId: actor.id }, select: { accessLevel: true } },
+      photos: {
+        where: VISIBLE_PHOTO,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        take: 1,
+        select: { storageKey: true },
+      },
+      _count: { select: { photos: { where: VISIBLE_PHOTO } } },
     },
     orderBy: { createdAt: "desc" },
   });
-  return rows.map((a) => ({
-    id: a.id,
-    title: a.title,
-    description: a.description,
-    ownerName: a.owner.displayName,
-    // The where clause guarantees one of these holds.
-    role: a.ownerId === actor.id ? "OWNER" : (a.access[0]?.accessLevel ?? "VIEW"),
-    createdAt: a.createdAt,
-  }));
+  return Promise.all(
+    rows.map(async (a) => ({
+      id: a.id,
+      title: a.title,
+      description: a.description,
+      ownerName: a.owner.displayName,
+      // The where clause guarantees one of these holds.
+      role: a.ownerId === actor.id ? ("OWNER" as const) : (a.access[0]?.accessLevel ?? "VIEW"),
+      createdAt: a.createdAt,
+      photoCount: a._count.photos,
+      coverUrl: a.photos[0] ? await signedGetUrl(thumbKey(a.photos[0].storageKey)) : null,
+    })),
+  );
 }
 
 /**

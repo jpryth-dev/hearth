@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { E2E_MEMBERS } from "../tests/e2e-users";
 import { jpegWithExif } from "../tests/images";
-import { signIn, trackCspViolations } from "./helpers";
+import { createAlbum, signIn, trackCspViolations } from "./helpers";
 
 test("every page gets a CSP with a fresh nonce that Next applies to its scripts", async ({ request }) => {
   const nonceOf = (csp: string) => csp.match(/'nonce-([^']+)'/)?.[1];
@@ -28,8 +28,7 @@ test("sign-in, upload and viewing photos run with no CSP violations", async ({ p
   const violations = trackCspViolations(page);
   await signIn(page, E2E_MEMBERS.alice.email);
 
-  await page.getByLabel("Title").fill("CSP check");
-  await page.getByRole("button", { name: "Create album" }).click();
+  await createAlbum(page, "CSP check");
   await page.getByLabel("Add photos", { exact: true }).setInputFiles({
     name: "csp.jpg",
     mimeType: "image/jpeg",

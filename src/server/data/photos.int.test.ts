@@ -7,7 +7,7 @@ import { ForbiddenError, NotFoundError } from "@/server/errors";
 import { resetDatabase } from "../../../tests/db";
 import { albumWorld, grant, makeActor } from "../../../tests/factories";
 import { FAMILY_PHOTO_EXIF, jpegWithExif } from "../../../tests/images";
-import { deleteAlbum } from "./albums";
+import { deleteAlbum, listVisibleAlbums } from "./albums";
 import { deletePhoto, getPhoto, listPhotos, uploadPhoto } from "./photos";
 
 type World = Awaited<ReturnType<typeof albumWorld>>;
@@ -175,6 +175,57 @@ describe("photos", () => {
     it.each(["stranger", "admin"] as const)("is not found for the %s", async (who) => {
       const photoId = await upload();
       await expect(deletePhoto(w[who], photoId)).rejects.toBeInstanceOf(NotFoundError);
+    });
+  });
+
+  describe("gallery navigation and album covers", () => {
+    async function threePhotos() {
+      const ids: string[] = [];
+      for (let i = 0; i < 3; i++) {
+        ids.push(await upload());
+        // Distinct timestamps make "newest first" unambiguous.
+        await db.photo.update({ where: { id: ids[i] }, data: { createdAt: new Date(Date.UTC(2026, 0, 1 + i)) } });
+      }
+      return ids as [string, string, string]; // oldest .. newest
+    }
+
+    it("gives each photo its position and newer/older neighbours", async () => {
+      const [oldest, middle, newest] = await threePhotos();
+
+      expect(await getPhoto(w.viewer, newest)).toMatchObject({ position: 1, total: 3, previousId: null, nextId: middle });
+      expect(await getPhoto(w.viewer, middle)).toMatchObject({ position: 2, total: 3, previousId: newest, nextId: oldest });
+      expect(await getPhoto(w.viewer, oldest)).toMatchObject({ position: 3, total: 3, previousId: middle, nextId: null });
+      expect((await listPhotos(w.viewer, w.shared.id)).map((p) => p.id)).toEqual([newest, middle, oldest]);
+    });
+
+    it("skips deleted photos when navigating", async () => {
+      const [oldest, middle, newest] = await threePhotos();
+      await deletePhoto(w.owner, middle);
+      expect(await getPhoto(w.viewer, newest)).toMatchObject({ total: 2, nextId: oldest });
+    });
+
+    it("shows each visible album with its newest photo as cover and a count of visible photos", async () => {
+      const [, , newest] = await threePhotos();
+      await db.photo.create({
+        data: { albumId: w.shared.id, uploadedByUserId: w.owner.id, storageKey: crypto.randomUUID(), status: "PROCESSING" },
+      });
+
+      const cards = await listVisibleAlbums(w.viewer);
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toMatchObject({ id: w.shared.id, photoCount: 3 });
+      const cover = await fetchImage(cards[0]?.coverUrl ?? "");
+      const newestRow = await db.photo.findUniqueOrThrow({ where: { id: newest } });
+      expect(cards[0]?.coverUrl).toContain(newestRow.storageKey);
+      expect(cover.length).toBeGreaterThan(0);
+
+      const owners = await listVisibleAlbums(w.owner);
+      expect(owners.find((a) => a.id === w.ownerPrivate.id)).toMatchObject({ photoCount: 0, coverUrl: null });
+    });
+
+    it("never signs a cover for an album the actor can't see", async () => {
+      await threePhotos();
+      expect(await listVisibleAlbums(w.stranger)).toEqual([]);
+      expect(await listVisibleAlbums(w.admin)).toEqual([]);
     });
   });
 });

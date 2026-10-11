@@ -9,7 +9,7 @@ test.beforeEach(clearMailbox);
 test("admin invites a member, who joins, signs out and signs back in", async ({ page, context }) => {
   // Admin signs in with an emailed link.
   await signIn(page, E2E_ADMIN.email);
-  await expect(page.getByRole("heading", { name: `Welcome, ${E2E_ADMIN.name}` })).toBeVisible();
+  await expect(page.getByText(`Welcome, ${E2E_ADMIN.name}`, { exact: true })).toBeVisible();
 
   const [cookie] = (await context.cookies()).filter((c) => c.name === "hearth_session");
   expect(cookie?.httpOnly).toBe(true);
@@ -32,7 +32,7 @@ test("admin invites a member, who joins, signs out and signs back in", async ({ 
   await expect(page.getByText("newbie@e2e.test")).toBeVisible();
   await page.getByLabel("Your name, as family will see it").fill("Newbie");
   await page.getByRole("button", { name: "Join Hearth" }).click();
-  await expect(page.getByRole("heading", { name: "Welcome, Newbie" })).toBeVisible();
+  await expect(page.getByText("Welcome, Newbie", { exact: true })).toBeVisible();
 
   // A member has no admin link, and the admin page doesn't exist for them.
   await expect(page.getByRole("link", { name: "Invitations" })).toHaveCount(0);
@@ -47,7 +47,7 @@ test("admin invites a member, who joins, signs out and signs back in", async ({ 
   await page.goto("/");
   await page.getByRole("button", { name: "Sign out" }).click();
   await signIn(page, "newbie@e2e.test");
-  await expect(page.getByRole("heading", { name: "Welcome, Newbie" })).toBeVisible();
+  await expect(page.getByText("Welcome, Newbie", { exact: true })).toBeVisible();
 });
 
 test("an unknown address gets the same answer and no email", async ({ page }) => {

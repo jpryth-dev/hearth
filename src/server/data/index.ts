@@ -31,6 +31,7 @@ export {
   getAlbum,
   listVisibleAlbums,
   updateAlbum,
+  type AlbumCard,
   type AlbumSummary,
   type AlbumWriteResult,
 } from "./albums";

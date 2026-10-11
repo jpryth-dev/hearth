@@ -11,6 +11,7 @@ import { deleteObjects, putObject, signedGetUrl } from "@/server/storage";
 
 import { requireAlbumRole, type AlbumRole } from "./access";
 import type { Actor } from "./actor";
+import { fullKey, thumbKey, VISIBLE_PHOTO } from "./photo-keys";
 
 /** The new photo's id, or why the file was refused. */
 export type UploadResult = { ok: true; photoId: string } | { ok: false; reason: RejectionReason };
@@ -24,6 +25,9 @@ export interface PhotoSummary {
   thumbUrl: string;
   uploadedBy: string;
 }
+
+/** Newest first; id breaks ties so the order is stable for prev/next. */
+const GALLERY_ORDER = [{ createdAt: "desc" as const }, { id: "desc" as const }];
 
 /** One photo for its own page. GPS is deliberately absent. */
 export interface PhotoDetail {
@@ -40,10 +44,14 @@ export interface PhotoDetail {
   takenAt: Date | null;
   camera: string | null;
   canDelete: boolean;
+  /** 1-based position in the album's gallery order, and the album's photo count. */
+  position: number;
+  total: number;
+  /** Neighbours in gallery order (previous = newer), or null at either end. */
+  previousId: string | null;
+  nextId: string | null;
 }
 
-const fullKey = (storageKey: string) => `${storageKey}/full`;
-const thumbKey = (storageKey: string) => `${storageKey}/thumb`;
 
 /**
  * Adds a photo to an album.
@@ -132,9 +140,9 @@ export async function uploadPhoto(
 export async function listPhotos(actor: Actor, rawAlbumId: string): Promise<PhotoSummary[]> {
   const { albumId } = await requireAlbumRole(actor, rawAlbumId, "VIEW", "listPhotos");
   const rows = await db.photo.findMany({
-    where: { albumId, status: "READY", deletedAt: null },
+    where: { albumId, ...VISIBLE_PHOTO },
     include: { uploadedBy: { select: { displayName: true } } },
-    orderBy: { createdAt: "desc" },
+    orderBy: GALLERY_ORDER,
   });
   return Promise.all(
     rows.map(async (p) => ({
@@ -151,7 +159,7 @@ export async function listPhotos(actor: Actor, rawAlbumId: string): Promise<Phot
 async function loadVisiblePhoto(actor: Actor, rawPhotoId: string, operation: string) {
   const id = uuidSchema.safeParse(rawPhotoId);
   if (!id.success) throw new NotFoundError("photo");
-  const photo = await db.photo.findFirst({ where: { id: id.data, status: "READY", deletedAt: null } });
+  const photo = await db.photo.findFirst({ where: { id: id.data, ...VISIBLE_PHOTO } });
   if (!photo) throw new NotFoundError("photo");
   // Audits the denial against the album if the actor can't see it.
   const { role } = await requireAlbumRole(actor, photo.albumId, "VIEW", operation);
@@ -181,6 +189,11 @@ export async function getPhoto(actor: Actor, rawPhotoId: string): Promise<PhotoD
     },
   });
   const camera = [details.metadata?.cameraMake, details.metadata?.cameraModel].filter(Boolean).join(" ");
+  // Ids only, from the album the actor was just checked against.
+  const order = (
+    await db.photo.findMany({ where: { albumId: photo.albumId, ...VISIBLE_PHOTO }, select: { id: true }, orderBy: GALLERY_ORDER })
+  ).map((p) => p.id);
+  const index = order.indexOf(photo.id);
   return {
     id: photo.id,
     albumId: photo.albumId,
@@ -194,6 +207,10 @@ export async function getPhoto(actor: Actor, rawPhotoId: string): Promise<PhotoD
     takenAt: details.metadata?.takenAt ?? null,
     camera: camera || null,
     canDelete: mayDelete(actor, photo.uploadedByUserId, role),
+    position: index + 1,
+    total: order.length,
+    previousId: order[index - 1] ?? null,
+    nextId: order[index + 1] ?? null,
   };
 }
 

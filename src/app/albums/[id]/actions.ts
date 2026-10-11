@@ -12,6 +12,11 @@ import type { AlbumFormState } from "../actions";
 // Every action re-checks through the data layer: they are reachable by direct
 // POST with any albumId, regardless of what the page showed.
 
+function refresh(albumId: string) {
+  revalidatePath(`/albums/${albumId}`);
+  revalidatePath(`/albums/${albumId}/manage`);
+}
+
 export async function updateAlbumAction(_prev: AlbumFormState, formData: FormData): Promise<AlbumFormState> {
   const actor = await currentActor();
   const albumId = formText(formData, "albumId");
@@ -19,7 +24,7 @@ export async function updateAlbumAction(_prev: AlbumFormState, formData: FormDat
     updateAlbum(actor, albumId, { title: formText(formData, "title"), description: formText(formData, "description") }),
   );
   if (!result.ok) return { errors: result.errors };
-  revalidatePath(`/albums/${albumId}`);
+  refresh(albumId);
   return {};
 }
 
@@ -41,7 +46,7 @@ export async function grantAccessAction(_prev: ShareFormState, formData: FormDat
   const result = await orNotFound(
     grantAlbumAccess(actor, albumId, formText(formData, "email"), formText(formData, "accessLevel")),
   );
-  revalidatePath(`/albums/${albumId}`);
+  refresh(albumId);
   return result.ok
     ? { status: "ok", message: GRANT_MESSAGES[result.change] }
     : { status: "error", message: GRANT_MESSAGES[result.reason] };
@@ -51,7 +56,7 @@ export async function revokeAccessAction(formData: FormData): Promise<void> {
   const actor = await currentActor();
   const albumId = formText(formData, "albumId");
   await orNotFound(revokeAlbumAccess(actor, albumId, formText(formData, "userId")));
-  revalidatePath(`/albums/${albumId}`);
+  refresh(albumId);
 }
 
 export async function deleteAlbumAction(formData: FormData): Promise<void> {
