@@ -22,4 +22,4 @@ export {
 export { displayNameSchema, emailSchema, tokenSchema } from "./auth";
 export { serverEnvSchema, storageEnvSchema, type ServerEnv, type StorageEnv } from "./env";
 export { uuidSchema, type Uuid } from "./ids";
-export { photoFilenameSchema } from "./photos";
+export { MAX_UPLOAD_BYTES, UPLOAD_ACCEPT, photoFilenameSchema } from "./photos";
