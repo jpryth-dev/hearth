@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "admin:create": "tsx scripts/create-admin.ts"
+    "admin:create": "tsx scripts/create-admin.ts",
+    "storage:init": "tsx scripts/storage-init.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1149.0",

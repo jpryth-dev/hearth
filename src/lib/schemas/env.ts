@@ -8,3 +8,18 @@ export const serverEnvSchema = z.object({
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
+
+/** Object storage configuration. Separate from serverEnv so sign-in works without it. */
+export const storageEnvSchema = z.object({
+  S3_ENDPOINT: z.url({ protocol: /^https?$/ }).optional(),
+  S3_REGION: z.string().min(1),
+  S3_BUCKET: z.string().min(3),
+  S3_ACCESS_KEY_ID: z.string().min(1),
+  S3_SECRET_ACCESS_KEY: z.string().min(1),
+  S3_FORCE_PATH_STYLE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+});
+
+export type StorageEnv = z.infer<typeof storageEnvSchema>;
