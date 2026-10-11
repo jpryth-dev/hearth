@@ -25,7 +25,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: "integration",
-          include: ["src/**/*.int.test.ts"],
+          include: ["src/**/*.int.test.ts", "prisma/**/*.int.test.ts"],
           globalSetup: ["tests/global-setup.ts"],
           setupFiles: ["tests/integration-setup.ts"],
           // Tests share one database; running files in parallel would race on resets.
