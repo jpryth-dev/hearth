@@ -8,3 +8,15 @@ export class ForbiddenError extends Error {
     this.name = "ForbiddenError";
   }
 }
+
+/**
+ * Thrown when a resource doesn't exist or the actor may not see it. The two
+ * cases are deliberately indistinguishable so ids can't be probed. Pages turn
+ * it into a 404.
+ */
+export class NotFoundError extends Error {
+  constructor(resource: string) {
+    super(`Not found: ${resource}`);
+    this.name = "NotFoundError";
+  }
+}

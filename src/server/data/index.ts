@@ -23,4 +23,6 @@
  */
 import "server-only";
 
-export {};
+export { albumRole, requireAlbumRole, type AlbumRole } from "./access";
+export { currentActor, type Actor } from "./actor";
+export { getAlbum, listVisibleAlbums, type AlbumSummary } from "./albums";
