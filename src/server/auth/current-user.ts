@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 
 import { serverEnv } from "@/server/env";
+import { requestIp } from "@/server/request";
 
 import { sessionCookieConfig } from "./cookie";
 import { createSession, deleteSession, findSessionUser, type SessionUser } from "./session";
@@ -55,6 +56,15 @@ export async function requireAdmin(): Promise<SessionUser> {
   const user = await requireUser();
   if (user.role !== "ADMIN") notFound();
   return user;
+}
+
+/**
+ * The signed-in admin plus request IP, the context admin functions take.
+ * Non-admins get a 404 (see requireAdmin).
+ */
+export async function requireAdminContext(): Promise<{ actor: SessionUser; ipAddress: string | null }> {
+  const actor = await requireAdmin();
+  return { actor, ipAddress: await requestIp() };
 }
 
 /**

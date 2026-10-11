@@ -13,7 +13,13 @@ export async function SiteHeader() {
         </Link>
         {user && (
           <nav className="flex items-center gap-4">
-            {user.role === "ADMIN" && <Link href="/admin/invitations">Invitations</Link>}
+            {user.role === "ADMIN" && (
+              <>
+                <Link href="/admin/invitations">Invitations</Link>
+                <Link href="/admin/users">People</Link>
+                <Link href="/admin/activity">Activity</Link>
+              </>
+            )}
             <span className="text-zinc-600 dark:text-zinc-400">{user.displayName}</span>
             <form action={signOutAction}>
               <button type="submit" className="underline">

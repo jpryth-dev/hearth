@@ -15,5 +15,12 @@
  *
  * @packageDocumentation
  */
-export { endSession, getCurrentUser, requireAdmin, requireUser, startSession } from "./current-user";
+export {
+  endSession,
+  getCurrentUser,
+  requireAdmin,
+  requireAdminContext,
+  requireUser,
+  startSession,
+} from "./current-user";
 export type { SessionUser } from "./session";
