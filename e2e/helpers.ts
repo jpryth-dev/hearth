@@ -16,3 +16,15 @@ export async function signIn(page: Page, email: string): Promise<void> {
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/\/$/);
 }
+
+/**
+ * Collects Content-Security-Policy violations the browser reports, so a test
+ * can assert a journey ran without any blocked scripts, styles or images.
+ */
+export function trackCspViolations(page: Page): string[] {
+  const violations: string[] = [];
+  page.on("console", (msg) => {
+    if (/Content Security Policy/i.test(msg.text())) violations.push(msg.text());
+  });
+  return violations;
+}
