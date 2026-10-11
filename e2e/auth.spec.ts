@@ -1,25 +1,14 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 import { E2E_ADMIN } from "../tests/e2e-users";
 import { clearMailbox, firstLink, waitForMail } from "../tests/mailpit";
+import { signIn } from "./helpers";
 
 test.beforeEach(clearMailbox);
 
-async function signInByEmail(page: Page, email: string, expectedMailCount = 1) {
-  await page.goto("/login");
-  await page.getByLabel("Email address").fill(email);
-  await page.getByRole("button", { name: "Email me a sign-in link" }).click();
-  await expect(page.getByRole("status")).toContainText("sign-in link is on its way");
-
-  const [mail] = await waitForMail(email, expectedMailCount);
-  await page.goto(firstLink(mail?.text ?? ""));
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await expect(page).toHaveURL(/\/$/);
-}
-
 test("admin invites a member, who joins, signs out and signs back in", async ({ page, context }) => {
   // Admin signs in with an emailed link.
-  await signInByEmail(page, E2E_ADMIN.email);
+  await signIn(page, E2E_ADMIN.email);
   await expect(page.getByRole("heading", { name: `Welcome, ${E2E_ADMIN.name}` })).toBeVisible();
 
   const [cookie] = (await context.cookies()).filter((c) => c.name === "hearth_session");
@@ -57,7 +46,7 @@ test("admin invites a member, who joins, signs out and signs back in", async ({ 
   // Sign out, then back in by link.
   await page.goto("/");
   await page.getByRole("button", { name: "Sign out" }).click();
-  await signInByEmail(page, "newbie@e2e.test", 2);
+  await signIn(page, "newbie@e2e.test");
   await expect(page.getByRole("heading", { name: "Welcome, Newbie" })).toBeVisible();
 });
 

@@ -4,7 +4,7 @@ import { execFileSync } from "node:child_process";
 import { Client } from "pg";
 
 import migrateTestDatabase from "./global-setup";
-import { E2E_ADMIN } from "./e2e-users";
+import { E2E_ADMIN, E2E_MEMBERS } from "./e2e-users";
 import { testDatabaseUrl } from "./test-database-url";
 
 export default async function setup(): Promise<void> {
@@ -19,6 +19,12 @@ export default async function setup(): Promise<void> {
     );
     // Table names come from the catalog; the database name was checked above.
     await client.query(`truncate table ${rows.map((r) => `"${r.tablename}"`).join(", ")} restart identity cascade`);
+    for (const m of Object.values(E2E_MEMBERS)) {
+      await client.query(
+        "insert into users (id, email, display_name, updated_at) values (gen_random_uuid(), $1, $2, now())",
+        [m.email, m.name],
+      );
+    }
   } finally {
     await client.end();
   }
