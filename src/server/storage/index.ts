@@ -50,13 +50,43 @@ export async function putObject(key: string, body: Buffer, contentType: string):
   );
 }
 
-/** Deletes objects; missing keys are not an error. */
+/** DeleteObjects accepts at most this many keys per request. */
+const MAX_KEYS_PER_DELETE = 1000;
+
+/**
+ * Deletes objects; missing keys are not an error.
+ *
+ * S3 answers a batch delete with 200 even when individual keys fail, listing
+ * them in `Errors`. Those are surfaced as a throw, so callers such as the
+ * retention purge keep their rows and retry rather than orphaning files.
+ *
+ * @throws StorageDeleteError if any key could not be deleted.
+ */
 export async function deleteObjects(keys: string[]): Promise<void> {
-  if (keys.length === 0) return;
   const { env, client } = storage();
-  await client.send(
-    new DeleteObjectsCommand({ Bucket: env.S3_BUCKET, Delete: { Objects: keys.map((Key) => ({ Key })) } }),
-  );
+  for (let i = 0; i < keys.length; i += MAX_KEYS_PER_DELETE) {
+    const chunk = keys.slice(i, i + MAX_KEYS_PER_DELETE);
+    const result = await client.send(
+      new DeleteObjectsCommand({
+        Bucket: env.S3_BUCKET,
+        // Quiet mode lists only the failures in the response.
+        Delete: { Objects: chunk.map((Key) => ({ Key })), Quiet: true },
+      }),
+    );
+    const failed = result.Errors?.length ?? 0;
+    if (failed > 0) throw new StorageDeleteError(failed, result.Errors?.[0]?.Code);
+  }
+}
+
+/** Some objects in a batch delete were not removed. Carries counts only, never keys. */
+export class StorageDeleteError extends Error {
+  constructor(
+    readonly failedCount: number,
+    readonly firstCode: string | undefined,
+  ) {
+    super(`Storage refused to delete ${failedCount} object(s) (${firstCode ?? "unknown error"})`);
+    this.name = "StorageDeleteError";
+  }
 }
 
 /**

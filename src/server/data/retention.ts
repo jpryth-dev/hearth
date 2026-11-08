@@ -3,6 +3,8 @@ import "server-only";
 import { db } from "@/server/db";
 import { deleteObjects } from "@/server/storage";
 
+import { fullKey, thumbKey } from "./photo-keys";
+
 /**
  * Stands in for the acting user in maintenance jobs that run with nobody
  * signed in. Only scripts create one; ESLint keeps this module out of
@@ -39,7 +41,8 @@ export interface PurgeReport {
  * Audit rows are kept. Safe to re-run: if storage fails, rows stay so the
  * next run retries.
  *
- * @throws if storage deletion fails (nothing for that batch is removed).
+ * @throws StorageDeleteError if the bucket refuses any key in a batch; that
+ * batch's rows are kept, so no file is left without a row pointing at it.
  */
 export async function purgeExpired(
   _job: SystemJob,
@@ -59,7 +62,7 @@ export async function purgeExpired(
   for (;;) {
     const batch = await db.photo.findMany({ where: purgeable, select: { id: true, storageKey: true }, take: BATCH });
     if (batch.length === 0) break;
-    await deleteObjects(batch.flatMap((p) => [`${p.storageKey}/full`, `${p.storageKey}/thumb`]));
+    await deleteObjects(batch.flatMap((p) => [fullKey(p.storageKey), thumbKey(p.storageKey)]));
     const { count } = await db.photo.deleteMany({ where: { id: { in: batch.map((p) => p.id) } } });
     photosPurged += count;
   }

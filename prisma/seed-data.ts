@@ -1,6 +1,6 @@
 // Development seed. The albums are arranged to cover each authorization case
 // the data-access tests need: owned, shared (view and contribute), unshared,
-// admin-owned, and soft-deleted. No photos until the image module exists.
+// admin-owned, and soft-deleted. No photos: upload some through the app.
 import type { PrismaClient } from "../src/generated/prisma/client";
 
 export const SEED_USERS = {

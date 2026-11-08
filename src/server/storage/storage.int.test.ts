@@ -24,6 +24,13 @@ describe("storage", () => {
     expect((await fetch(await signedGetUrl(key))).status).toBe(404);
   });
 
+  it("deletes batches larger than one request allows", async () => {
+    const keys = Array.from({ length: 1001 }, () => `${crypto.randomUUID()}/thumb`);
+    await putObject(keys[1000]!, Buffer.from("last"), "image/webp");
+    await deleteObjects(keys);
+    expect((await fetch(await signedGetUrl(keys[1000]!))).status).toBe(404);
+  });
+
   it("signs URLs that expire within minutes", async () => {
     const url = new URL(await signedGetUrl(`${crypto.randomUUID()}/thumb`));
     expect(Number(url.searchParams.get("X-Amz-Expires"))).toBeLessThanOrEqual(300);

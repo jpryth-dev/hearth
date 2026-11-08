@@ -67,7 +67,7 @@ export async function requestSignInLink(
   });
   const link = new URL(`/login/verify/${token}`, serverEnv().APP_URL).toString();
   try {
-    await sendMail(signInMessage({ to: email, link }));
+    await sendMail(signInMessage({ to: email, link, validMinutes: SIGN_IN_TOKEN_TTL_MS / 60_000 }));
   } catch (error) {
     await db.loginToken.delete({ where: { id: row.id } });
     throw error;

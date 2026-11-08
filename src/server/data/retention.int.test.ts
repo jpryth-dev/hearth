@@ -1,7 +1,8 @@
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { DeleteObjectsCommand, S3Client } from "@aws-sdk/client-s3";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { db } from "@/server/db";
-import { signedGetUrl } from "@/server/storage";
+import { signedGetUrl, StorageDeleteError } from "@/server/storage";
 
 import { resetDatabase } from "../../../tests/db";
 import { albumWorld } from "../../../tests/factories";
@@ -24,6 +25,7 @@ describe("purgeExpired", () => {
     await resetDatabase();
     w = await albumWorld();
   });
+  afterEach(() => vi.restoreAllMocks());
   afterAll(() => db.$disconnect());
 
   async function photo(albumId = w.shared.id) {
@@ -84,6 +86,26 @@ describe("purgeExpired", () => {
     expect(report).toMatchObject({ sessionsDeleted: 1, signInLinksDeleted: 1 });
     expect(await db.session.count()).toBe(1);
     expect(expired.token).not.toBe(live.token);
+  });
+
+  it("keeps the rows when the bucket refuses a delete, so the next run retries", async () => {
+    const old = await photo();
+    await db.photo.update({ where: { id: old.id }, data: { deletedAt: daysAgo(RETENTION_DAYS + 1) } });
+    // S3 reports per-key failures inside a 200 response, not as a thrown error.
+    const send = S3Client.prototype.send as unknown as (this: S3Client, command: unknown) => Promise<unknown>;
+    vi.spyOn(S3Client.prototype, "send").mockImplementation(function (this: S3Client, command: unknown) {
+      if (command instanceof DeleteObjectsCommand) {
+        return Promise.resolve({ Errors: [{ Key: "k", Code: "AccessDenied" }], $metadata: {} });
+      }
+      return send.call(this, command);
+    } as S3Client["send"]);
+
+    await expect(purgeExpired(JOB)).rejects.toBeInstanceOf(StorageDeleteError);
+    expect(await db.photo.count({ where: { id: old.id } })).toBe(1);
+
+    vi.restoreAllMocks();
+    expect((await purgeExpired(JOB)).photosPurged).toBe(1);
+    expect(await objectStatus(old.storageKey)).toBe(404);
   });
 
   it("is idempotent", async () => {
