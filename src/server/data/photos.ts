@@ -52,7 +52,6 @@ export interface PhotoDetail {
   nextId: string | null;
 }
 
-
 /**
  * Adds a photo to an album.
  *

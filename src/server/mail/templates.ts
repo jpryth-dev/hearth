@@ -2,6 +2,7 @@ import "server-only";
 
 import type { MailMessage } from "./index";
 
+/** The invitation email. Plain text, so a display name can't inject markup. */
 export function invitationMessage(args: {
   to: string;
   inviterName: string;
@@ -23,7 +24,8 @@ export function invitationMessage(args: {
   };
 }
 
-export function signInMessage(args: { to: string; link: string }): MailMessage {
+/** The sign-in link email. `validMinutes` comes from the TTL that enforces it, so the text can't drift. */
+export function signInMessage(args: { to: string; link: string; validMinutes: number }): MailMessage {
   return {
     to: args.to,
     subject: "Your Hearth sign-in link",
@@ -31,7 +33,7 @@ export function signInMessage(args: { to: string; link: string }): MailMessage {
       "Sign in to Hearth:",
       args.link,
       "",
-      "This link works once and expires in 15 minutes.",
+      `This link works once and expires in ${args.validMinutes} minutes.`,
       "If you didn't ask to sign in, you can ignore this email.",
     ].join("\n"),
   };

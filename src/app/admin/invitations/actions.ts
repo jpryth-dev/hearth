@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { formText } from "@/lib/form-data";
+import { emailSchema } from "@/lib/schemas";
 import { requireAdmin } from "@/server/auth";
 import { createInvitation, revokeInvitation, type InviteResult } from "@/server/auth/invitations";
 import { ForbiddenError } from "@/server/errors";
@@ -33,7 +34,7 @@ export async function inviteAction(_prev: InviteFormState, formData: FormData): 
     return { status: "error", message };
   }
   revalidatePath("/admin/invitations");
-  return { status: "sent", email: email.trim().toLowerCase() };
+  return { status: "sent", email: emailSchema.parse(email) };
 }
 
 export async function revokeAction(formData: FormData): Promise<void> {

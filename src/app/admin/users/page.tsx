@@ -13,7 +13,6 @@ const NOTICES = {
   unchanged: "Nothing to change.",
 } as const;
 
-
 export default async function UsersPage({ searchParams }: PageProps<"/admin/users">) {
   const ctx = await requireAdminContext();
   const users = await listUsers(ctx);
